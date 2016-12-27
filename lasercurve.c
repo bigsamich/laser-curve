@@ -27,10 +27,14 @@ Arguments needed include:
 
 
 */
+
+
+//#include "stdafx.h"   /* Win32 Console App */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
 typedef struct {
 	int bw;
 	int bn;
@@ -42,120 +46,83 @@ typedef struct {
 	float order;
 	int ns;
 	float np;
-	int trainOrder;
-	int xcord;
 } params;
 
-//Function Prototypes
-float equationSlope(params *input);
-int keepAlive(int *data, int *rawkeepalive, params *input);
-int saveData(char file_name[], int *data, int *rawdata, int *rawkeepalive, params *input);
-int curve(char file_name[], params *input);
-int addPadding(int *data, int *rawdata, params *input);
-int addPulse(int *data, int *rawdata, int burst_it, int pulse_it, params *input);
-int amplitude(params *input, int burst_it, int pulse_it);
-int mod64(int *data, int *rawdata, params *input);
-int addBurst(int *data, int *rawdata, int burst_it, params *input);
-int checkTol(params input);
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-float burstSlope(params *input){
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+float equationSlope(params input){
 	//This function will calculate the constant/slope asociated with the beginning and max pulse for the given order of function.
 	//Default to a quadratic for higher order
-	int value = (*input).order;
+	int value = input.order;
 	switch(value){
 		case 0 :
 			return 0;
 		case 1 :
-			return((float)(4095- (*input).pa)/((*input).bw-1));
+			return((float)(4095-input.pa)/(input.bw-1));
 		case 2 :
-			return((float)(4095- (*input).pa)/(((*input).bw-1)*((*input).bw-1)));
+			return((float)(4095-input.pa)/((input.bw-1)*(input.bw-1)));
 		case 3 :
-			return((float)(4095- (*input).pa)/(((*input).bw-1)*((*input).bw-1)*((*input).bw-1)));
+			return((float)(4095-input.pa)/((input.bw-1)*(input.bw-1)*(input.bw-1)));
 		case -1 :
-			return((float)((*input).pa-4095)/((*input).bw-1));
+			return((float)(input.pa-4095)/(input.bw-1));
 		case -2 :
-			return((float)((*input).pa-4095)/(((*input).bw-1)*((*input).bw-1)));
+			return((float)(input.pa-4095)/((input.bw-1)*(input.bw-1)));
 		case -3 :
-			return((float)((*input).pa-4095)/(((*input).bw-1)*((*input).bw-1)*((*input).bw-1)));
+			return((float)(input.pa-4095)/((input.bw-1)*(input.bw-1)*(input.bw-1)));
 		default :
-			return((float)(4095- (*input).pa)/(((*input).bw-1)*((*input).bw-1)));
+			return((float)(4095-input.pa)/((input.bw-1)*(input.bw-1)));
 	}
 		
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-float trainSlope(params *input) {
-	int value = (*input).trainOrder;
-	switch (value) {
-	case 0:
-		return 1;
-	case 1:
-		return((float)(4095 - (*input).pa) / ((*input).bn - 1));
-	case 2:
-		return((float)(4095 - (*input).pa) / (((*input).bn - 1)*((*input).bn - 1)));
-	case 3:
-		return((float)(4095 - (*input).pa) / (((*input).bn - 1)*((*input).bn - 1)*((*input).bn - 1)));
-	default:
-		return((float)(4095 - (*input).pa) / (((*input).bn - 1)*((*input).bn - 1)));
-	}
 
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int keepAlive(int *data,int *rawkeepalive, params *input) {
-	
-	int value = 0;	
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void keepAlive(char file_name[], params input) {
+	int value = 0;
+	int tryCreate =0;
+	//Open the laser file for read and write. Advance the file pointer by the shift value
+	FILE *laser_file1 = fopen(file_name, "r");
+	FILE *laser_file2 = fopen("temp.txt", "w");
+	FILE *laser_file3 = fopen("temp2.txt","w");
 	int flag = 1;
 	int i = 0;
 	int n = 0;
 	int m = 0;
-	int localcord = 0;
-	int size = (*input).xcord;
-	//set up our 450KHz keep alive mask by oring in 0x3000 to whatever value we land on until EOF
-	
-	for (i=0; i<(*input).ks; i++) {
-		rawkeepalive[i]=0;
-		localcord++;
-
-	}
-	
-	while (localcord < size) {
-		
-		for (i = 0; i<4; i++) {
-			if (localcord==size) break;
-			
-			value = data[localcord] | 12288;
-			
-			data[localcord] = value;
-			rawkeepalive[localcord] = 12228;
-			localcord++;
-			
-			for (n=0; n<3; n++) {
-				if (localcord==size) break;
-				rawkeepalive[localcord] = 0;
-				localcord++;
-			}
-			
-		}
-		
-		//Need to lock in this numebras amount of time for each turn. This numebr plus 16 for the marker
-		for (m = 0; m<2200; m++) {
-			if (localcord==size) break;
-			rawkeepalive[localcord] = 0;
-			localcord++;
-		}
-		
-	}
-	
-	return 1;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int saveData(char file_name[],int *data,int *rawdata,int *rawkeepalive, params *input){
-	
 	char laser_train[50] ={'\0'};
-	char laser_keepalive[50] ={'\0'};	
+	char laser_keepalive[50] ={'\0'};
 	
-	int index;
-	int size = (*input).xcord;
-	
+	//set up our 450KHz keep alive mask by oring in 0x3000 to whatever value we land on until EOF
+	i = 0;
+	for (; i<input.ks; i++) {
+		fscanf(laser_file1, "%d", &value);
+		fprintf(laser_file2, "%d\n", value);
+		fprintf(laser_file3,"%d\n", 0);
+	}
+
+	while (flag != EOF) {
+		for (i = 0; i<4; i++) {
+			flag = fscanf(laser_file1, "%d", &value);
+			if (flag == EOF) break;
+			value = value | 12288;
+			fprintf(laser_file2, "%d\n", value);
+			fprintf(laser_file3, "%d\n", 12288);
+			for (n=0; n<3; n++) {
+				flag = fscanf(laser_file1, "%d", &value);
+				if (flag == EOF) break;
+				fprintf(laser_file2, "%d\n", value);
+				fprintf(laser_file3, "%d\n", 0);
+			}
+		}
+		m = 0;
+		//Need to lock in this numebras amount of time for each turn. This numebr plus 16 for the marker
+		for (; m<2200; m++) {
+			flag = fscanf(laser_file1, "%d", &value);
+			if (flag == EOF) break;
+			fprintf(laser_file2, "%d\n", value);
+			fprintf(laser_file3, "%d\n", 0);
+		}
+	}
+	fclose(laser_file1);
+	fclose(laser_file2);
+	fclose(laser_file3);
 	
 	strncpy(laser_train, file_name, (strlen(file_name) -4));
 	strcat(laser_train, "_train.txt");
@@ -163,139 +130,114 @@ int saveData(char file_name[],int *data,int *rawdata,int *rawkeepalive, params *
 	strncpy(laser_keepalive, file_name, (strlen(file_name) -4));
 	strcat(laser_keepalive, "_keepalive.txt");
 	
-
-	FILE *laser_file1 = fopen(file_name, "w");
-	FILE *laser_file2 = fopen(laser_train, "w");
-	FILE *laser_file3 = fopen(laser_keepalive,"w");
-   
-	for(index=0; index<size;index++){
-		fprintf(laser_file1, "%d\n", data[index]);
-		fprintf(laser_file2, "%d\n", rawdata[index]);
-		fprintf(laser_file3, "%d\n", rawkeepalive[index]);
-	}
-
-		
-	fclose(laser_file1);
-	fclose(laser_file2);
-	fclose(laser_file3);
 	
-	return 1;
+	remove(laser_train);
+	remove(laser_keepalive);
+	
+	//This is the raw data only
+	rename(file_name, laser_train);
+	//This is the keepalive pulse only
+	rename("temp2.txt", laser_keepalive);
+	//This is going to be the data imputted into the laser
+	rename("temp.txt", file_name);
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
-int curve(char file_name[],params *input){
-	int sizescale = ((*input).bn*5000);
-	int *data = (int*)malloc(sizescale *sizeof(int));
-	int *rawdata = (int*)malloc(sizescale *sizeof(int));
-	int *rawkeepalive = (int*)malloc(sizescale *sizeof(int));
-		
-	int pad_delay, i, pad_it, pulse_it, pulse_number;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int curve(char file_name[], params input) {
 	int xcord = 0;
+	int flag = 0;
+	int backflag = 1;
+	int flagcord = 0;
+	int start;
+	char laser_train[50] ={'\0'};
+	char laser_pulse[50] ={'\0'};
+	int pad_delay, i, pad_it, pulse_it, pulse_number;
+	int tryCreate1 = 0;
+	int tryCreate2 = 0;
+	int tryCreate3 = 0;
 	float eq;
-	int burst_it = 0; //Burst iterator	
-	
-	memset(data, 0, sizescale * sizeof(int));
-
-
-	if ((*input).sc==2)for (pulse_it = 0; pulse_it < (*input).bw; pulse_it++) addPulse(data,rawdata,burst_it,pulse_it,input);
-	addPadding(data,rawdata,input);
-
-	for (; burst_it <= (*input).bn; burst_it++) addBurst(data,rawdata,burst_it,input);
-
-	mod64(data,rawdata,input);
-
-	keepAlive(data,rawkeepalive,input);
-
-	saveData(file_name,data, rawdata, rawkeepalive, input);
-	free(data);
-	free(rawdata);
-	free(rawkeepalive);
-	
-	return 1;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int addPadding(int *data,int *rawdata, params *input){
-	int pad_it;
-	int pad_delay =(int) ((*input).nd * 2000);
-	
-	for (pad_it = 1; pad_it <= pad_delay; pad_it++) {
-		data[(*input).xcord]=2047;
-		rawdata[(*input).xcord]=2047;
-		(*input).xcord++;
-	}
-	return 1;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
-int addPulse(int *data,int *rawdata,int burst_it, int pulse_it, params *input){
-	//Double Check this
-	int amp = amplitude(input, burst_it, pulse_it);;
-	int pulse_number = (int)((*input).pw/ 0.5);
-	int i;
-
-	if (((int)((*input).pw * 10) % 5) >= 3) pulse_number++;
-
-	for (i = 0; i <= 9; i++) {
-		if (i < pulse_number){
-			data[(*input).xcord]=amp;
-			rawdata[(*input).xcord]=amp;
-		} 
-		else{
-			data[(*input).xcord]=2047;
-			rawdata[(*input).xcord]=2047;
-		}	
-		(*input).xcord++;
-	}
-	return 1;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
-int amplitude(params *input, int burst_it , int pulse_it) {
 	int amp;
-	float burstPower;
-	float burstEquation = burstSlope(input);
-	float trainEquation = trainSlope(input);
+	FILE *laser_file = fopen(file_name, "w");
+	
+	////Do this x number of times depending on number of bursts as is deifned above
+	int burst_it = 0; //Burst iterator
 
-	//float pulseScalar = ((((1 - (*input).np) / (*input).bn)*burst_it) + (*input).np);
+	//Put the notch pad here and then do a fixed 450 kHz b/w pulses with a tuneable couple words
 
-	float pulseScalar = pow(burst_it, (*input).trainOrder);
+	//Convert delay into padding lines. A 2 us delay will translate to 4000 lines.
+	pad_delay =(input.nd * 2000);
+	if(input.sc==2) pad_delay= pad_delay - (input.bw*10);
+	for (pad_it = 1; pad_it <= pad_delay; pad_it++) {
+			fprintf(laser_file, "%d\n", 2047);
+			xcord++;
+		}
+	
+	eq = equationSlope(input);
+	//Put a leading pulse if scenario = 2
+	if (input.sc == 2) goto PRE;
+BACK:;
+	backflag = 0;
+	for (; burst_it < input.bn; burst_it++) {
+		//Set 450khZ per burst
+		//dont do this on the first one
+		//4436 minus our burst width to set up the 450Khz structure
+		//Changed 4436 to be a variable 7-26-16
+		for (pad_it = 1; pad_it <= (input.ns -(input.bw*10)); pad_it++) {
+			fprintf(laser_file, "%d\n", 2047);
+			xcord++;
+		}
+		
+		//We now iterate the number of pulses per burst as defined by burst_width
+	PRE:;
+		for (pulse_it = 0; pulse_it < input.bw; pulse_it++) {
+			//We need to know our pulse width in bin size.
+			//(This was entered as nano seconds) 1 word is equal to .5 ns.
+			//For now we will round low for all arithmetic.
+			pulse_number = (int)(input.pw / 0.5);
 
-	if ((*input).order > 0) {
-		burstPower = pow(pulse_it, (*input).order);
-		amp = pulseScalar * ((burstEquation*burstPower) + (*input).pa);
+			if (((int)(input.pw * 10) % 5) >= 3) pulse_number++;
+
+			//Calculate the pulse amplitude for the specific pulse using the equation slope prevoiusly calculated, we need to calculate our percenatge based on burst number
+			if (input.order > 0){
+				amp= ((((1-input.np)/input.bn)*burst_it)+input.np)*((eq*pow(pulse_it,input.order))+input.pa);
+			}
+			else if (input.order < 0){
+				amp= ((((1-input.np)/input.bn)*burst_it)+input.np)*(4095+(eq*pow((pulse_it),(-input.order))));
+			}
+			else{
+				amp= ((((1-input.np)/input.bn)*burst_it)+input.np)*input.pa;
+			}
+							
+			for (i = 0; i <= 9; i++) {
+				if (i < pulse_number) {
+					fprintf(laser_file, "%d\n", amp);
+				}
+				else {
+					fprintf(laser_file, "%d\n", 2047);
+				}
+				xcord++;
+				flagcord++;
+			}
+			flag++;
+		}
+		if (input.sc == 2 && backflag == 1) goto BACK;
 	}
-	else if ((*input).order < 0) {
-		burstPower = pow(pulse_it, (-(*input).order));
-		amp = pulseScalar * (4095 + (burstEquation*burstPower));
+	
+	//Pad the end of the file to mod %64
+	//since we are already incrementig xcrod, use this to know how many lines we have in the out file
+	while (xcord % 64) {
+		fprintf(laser_file, "%d\n",2047);
+		xcord++;
 	}
-	else
-		amp = pulseScalar * (*input).pa;
+	//Close the output file
+	fclose(laser_file);
 
-	return amp;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int mod64(int *data,int *rawdata, params *input){
-	while ((*input).xcord % 64 != 0) {
-		(*input).xcord++;
-		data[(*input).xcord]=2047;
-		rawdata[(*input).xcord]=2047;
-	}
+	//Open the created file, and or in 0x3000 at 450KHz to mask the keep alive
+	keepAlive(file_name, input);
+
 	return 1;
-}	
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
-int addBurst(int *data,int *rawdata,int burst_it, params *input){
-	int pad_it;
-	int pulse_it;
-	for (pad_it = 1; pad_it <= ((*input).ns -((*input).bw*10)); pad_it++) {
-		data[(*input).xcord]=2047;
-		rawdata[(*input).xcord]=2047;
-		(*input).xcord++;
-	}
-
-	for (pulse_it = 0; pulse_it < (*input).bw; pulse_it++) {
-		addPulse(data,rawdata,burst_it,pulse_it,input);
-	}
-
-	return 1;
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int checkTol(params input) {
 
 	if (input.bw<8 || input.bw > 20) return 0; //burst_width
@@ -310,7 +252,8 @@ int checkTol(params input) {
 	else return 1;
 
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv) {
 	int check;
 	char * file_name = malloc(sizeof(char) * 50);
@@ -365,12 +308,9 @@ int main(int argc, char **argv) {
 	
 	input.np = atof(argv[11]);
 	//Scale notch percentage to 1
-	if (input.np > 1)
-		input.np = input.np/100;
+	input.np = input.np/100;
 
-	input.trainOrder = atoi(argv[12]);
-
-	input.xcord=0;
+	//printf("Done\n");
 
 	// Check tolerance of each input
 	check = checkTol(input);
@@ -381,8 +321,7 @@ int main(int argc, char **argv) {
 	}
 
 	//Create the curve
-
-	check = curve(file_name, &input);
+	check = curve(file_name, input);
 
 	if (check != 1) {
 		printf("Curve creation failed: Abort in curve function\n");
@@ -391,4 +330,4 @@ int main(int argc, char **argv) {
 	//If here the program completed succesfully
 	return 1;
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
