@@ -84,6 +84,7 @@ float burstSlope(params *input){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float trainSlope(params *input) {
+	//Calculates the slope/order for the notch train.
 	int value = (*input).trainOrder;
 	switch (value) {
 	case 0:
@@ -101,7 +102,7 @@ float trainSlope(params *input) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int keepAlive(int *data,int *rawkeepalive, params *input) {
-	
+	//set up our 450KHz keep alive mask by oring in 0x3000 to whatever value we land on until EOF
 	int value = 0;	
 	int flag = 1;
 	int i = 0;
@@ -109,7 +110,6 @@ int keepAlive(int *data,int *rawkeepalive, params *input) {
 	int m = 0;
 	int localcord = 0;
 	int size = (*input).xcord;
-	//set up our 450KHz keep alive mask by oring in 0x3000 to whatever value we land on until EOF
 	
 	for (i=0; i<(*input).ks; i++) {
 		rawkeepalive[i]=0;
@@ -149,7 +149,8 @@ int keepAlive(int *data,int *rawkeepalive, params *input) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int saveData(char file_name[],int *data,int *rawdata,int *rawkeepalive, params *input){
-	
+	//Saves the array data from the data rawdata and keepalive arrays. Creates three seperate files for each data. Saves the data with the name filename+identifier 
+
 	char laser_train[50] ={'\0'};
 	char laser_keepalive[50] ={'\0'};	
 	
@@ -183,6 +184,11 @@ int saveData(char file_name[],int *data,int *rawdata,int *rawkeepalive, params *
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 int curve(char file_name[],params *input){
+	//Generates the curve data structure. Will create the 3 arrays asociated with the data, rawdata, and the keepalive only data. 
+	// rawdata = curve data with no keep alive
+	//keepalive = array of size equal to rawdata with the $3000 keep alive pulses
+	//Data = rawdata || keepalive
+
 	int sizescale = ((*input).bn*5000);
 	int *data = (int*)malloc(sizescale *sizeof(int));
 	int *rawdata = (int*)malloc(sizescale *sizeof(int));
@@ -214,6 +220,8 @@ int curve(char file_name[],params *input){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int addPadding(int *data,int *rawdata, params *input){
+	//adds in 0 amplitude pulses (2047) of size notch delay * 2000
+
 	int pad_it;
 	int pad_delay =(int) ((*input).nd * 2000);
 	
@@ -226,11 +234,14 @@ int addPadding(int *data,int *rawdata, params *input){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
 int addPulse(int *data,int *rawdata,int burst_it, int pulse_it, params *input){
-	//Double Check this
+	//Adds a pulse to the curve
+	//A pulse has size ~10 words. 1 word = 0.5 nanoseconds
+
 	int amp = amplitude(input, burst_it, pulse_it);;
 	int pulse_number = (int)((*input).pw/ 0.5);
 	int i;
 
+	//Round off pulse width to the nearest word.
 	if (((int)((*input).pw * 10) % 5) >= 3) pulse_number++;
 
 	for (i = 0; i <= 9; i++) {
@@ -248,6 +259,11 @@ int addPulse(int *data,int *rawdata,int burst_it, int pulse_it, params *input){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 int amplitude(params *input, int burst_it , int pulse_it) {
+	//Calculates the amplitude of the laser at a given burst/pulse.
+	//Scales the amplitude to set up curve structure given input parameters. 
+
+	////////////////////////IN DEVELPOMENT//////////////////////////
+
 	int amp;
 	float burstPower;
 	float burstEquation = burstSlope(input);
@@ -272,6 +288,8 @@ int amplitude(params *input, int burst_it , int pulse_it) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int mod64(int *data,int *rawdata, params *input){
+	//Insures the curve data is module 64
+
 	while ((*input).xcord % 64 != 0) {
 		(*input).xcord++;
 		data[(*input).xcord]=2047;
@@ -281,6 +299,10 @@ int mod64(int *data,int *rawdata, params *input){
 }	
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 int addBurst(int *data,int *rawdata,int burst_it, params *input){
+	//Adds a burst to the curve
+	//A burst is made of 8-20 pulses
+	//Parameter burstwidth controls the size
+
 	int pad_it;
 	int pulse_it;
 	for (pad_it = 1; pad_it <= ((*input).ns -((*input).bw*10)); pad_it++) {
@@ -312,6 +334,9 @@ int checkTol(params input) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv) {
+	//Main entry point. Does argument checking, error bounds, contains help information, takes in user input
+
+
 	int check;
 	char * file_name = malloc(sizeof(char) * 50);
 	char c;
