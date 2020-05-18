@@ -1,3 +1,5 @@
+//Marked for review
+//in line comments 
 /* laserCurve.c
 
 Creadted 12-24-15
